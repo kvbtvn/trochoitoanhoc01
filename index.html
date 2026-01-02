@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò chơi Math Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Fredoka One -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <!-- Tone.js CDN for sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Fredoka One', cursive; /* Playful font */
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); /* Soft gradient background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            /* Đã loại bỏ 'overflow: hidden;' để cho phép cuộn trang nếu cần */
+        }
+
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 30px; /* More rounded */
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2); /* Softer, larger shadow */
+            padding: 35px;
+            width: 100%;
+            max-width: 480px; /* Slightly wider for a friendly feel */
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* --- Game UI Elements (Hidden by default) --- */
+        .game-ui-section {
+            display: none; /* Hidden by default, managed by JS */
+            flex-direction: column;
+            gap: 25px; /* Increased gap */
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .score {
+            font-size: 2rem; /* Larger score */
+            font-weight: bold;
+            color: #ff6f61; /* Bright red */
+            background-color: #ffe0b2; /* Light orange background */
+            padding: 10px 20px;
+            border-radius: 15px; /* More rounded */
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .timer-bar-container {
+            width: 100%;
+            height: 20px; /* Thicker timer bar */
+            background-color: #e0f7fa; /* Light blue */
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.15);
+        }
+
+        .timer-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #81c784; /* Brighter green */
+            border-radius: 10px;
+            transition: width 0.1s linear;
+        }
+
+        .expression-display {
+            background-color: #e3f2fd; /* Very light blue background */
+            color: #424242; /* Darker text for contrast */
+            font-size: 4rem; /* Even larger font */
+            font-weight: bold;
+            padding: 30px 25px;
+            border-radius: 20px; /* More rounded */
+            margin-bottom: 25px;
+            min-height: 140px; /* Ensure consistent height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
+            border: 2px solid #90caf9; /* Soft border */
+        }
+
+        .expression-part {
+            margin: 0 8px; /* More spacing */
+            white-space: nowrap;
+        }
+
+        .operator {
+            color: #ffab40; /* Bright orange for operators */
+        }
+
+        .equals {
+            color: #64b5f6; /* Lighter blue for equals sign */
+        }
+
+        .question-mark-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .question-mark-arrow {
+            position: absolute;
+            top: -20px; /* Adjust position above '?' */
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem; /* Larger arrow */
+            color: #757575; /* Darker gray arrow */
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); } /* More pronounced bounce */
+        }
+
+        .answer-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px; /* Reverted: Larger gap between buttons */
+            margin-top: 20px;
+        }
+
+        .answer-button {
+            background: linear-gradient(135deg, #82b1ff 0%, #42a5f5 100%); /* Reverted: Blue gradient */
+            color: white;
+            padding: 25px 0; /* Reverted: Larger padding */
+            font-size: 2.5rem; /* Reverted: Larger font */
+            font-weight: bold;
+            border: none;
+            border-radius: 20px; /* Reverted: More rounded */
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); /* More prominent shadow */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2); /* Text shadow for pop */
+            /* Removed aspect-ratio and flex properties to match codecu.html */
+        }
+
+        .answer-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #64b5f6 0%, #2196f3 100%); /* Darker blue on hover */
+            transform: translateY(-4px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .answer-button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .answer-button:disabled {
+            /* Đảm bảo màu xám được áp dụng và ghi đè mọi gradient */
+            background: #a0aec0 !important;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.6; /* Thêm opacity để làm rõ trạng thái disabled */
+            /* Đảm bảo transition cho background và opacity */
+            transition: background 0.2s ease-in-out, transform 0.1s, box-shadow 0.2s, opacity 0.2s;
+        }
+
+        /* --- Overlay Screens (Hidden by default, managed by JS) --- */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.98); /* Slightly less transparent */
+            border-radius: 30px;
+            display: flex; /* Always flex for centering children */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px; /* Increased gap */
+            z-index: 20;
+            padding: 30px; /* Đã thêm padding ở đây */
+            box-sizing: border-box;
+        }
+
+        .overlay-screen h2 {
+            font-size: 3rem; /* Larger heading */
+            color: #424242; /* Darker gray for text */
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            /* padding: 0 20px; Đã loại bỏ padding ngang ở đây vì đã có padding chung cho overlay-screen */
+        }
+
+        .overlay-button { /* Common style for buttons on overlay screens */
+            background: linear-gradient(135deg, #a5d6a7 0%, #66bb6a 100%); /* Green gradient */
+            color: white;
+            padding: 20px 40px; /* Larger padding */
+            font-size: 2rem; /* Larger font */
+            font-weight: bold;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            width: 100%; 
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .overlay-button:hover {
+            background: linear-gradient(135deg, #81c784 0%, #43a047 100%); /* Darker green on hover */
+            transform: translateY(-4px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-over-screen p {
+            font-size: 2.5rem; /* Đã thay đổi: Chữ to hơn */
+            color: #757575; /* Darker gray */
+            margin-bottom: 20px;
+            /* Đã thêm các thuộc tính sau để kiểm soát chiều rộng và căn giữa */
+            background-color: #ffffff; /* Màu nền trắng cho ô điểm */
+            padding: 15px 10px; /* Đã thay đổi: Giảm padding ngang để ngắn lại */
+            border-radius: 20px; /* Bo tròn góc cho ô điểm */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Đổ bóng cho ô điểm */
+            max-width: 180px; /* Đã thay đổi: Giới hạn chiều rộng tối đa của ô điểm */
+            width: fit-content; /* Đảm bảo nó co lại vừa nội dung */
+            text-align: center; /* Căn giữa chữ trong ô */
+            margin: 0 auto 20px auto; /* Căn giữa và giữ margin-bottom */
+            display: inline-block; /* Quan trọng: Để width:fit-content hoạt động tốt hơn */
+            box-sizing: border-box; /* Đảm bảo padding được tính vào width */
+        }
+
+        .control-button {
+            background: linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%); /* Gray gradient */
+            color: white;
+            padding: 12px 18px; /* Slightly larger */
+            font-size: 1.4rem; /* Larger font */
+            border: none;
+            border-radius: 12px; /* More rounded */
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .control-button:hover {
+            background: linear-gradient(135deg, #90a4ae 0%, #78909c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* New style for the smaller reset audio button */
+        .reset-audio-button {
+            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%); /* Light red gradient */
+            color: #b71c1c; /* Dark red text */
+            padding: 10px 20px; /* Smaller padding */
+            font-size: 1.2rem; /* Smaller font size */
+            font-weight: bold;
+            border: none;
+            border-radius: 10px; /* Slightly less rounded */
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Smaller shadow */
+            width: fit-content; /* Adjust width to content */
+            max-width: 250px; /* Adjusted max width to help with single line */
+            margin-top: auto; /* Pushes the button to the bottom */
+            margin-bottom: 20px; /* Add some space above the next button */
+            text-shadow: none; /* Remove text shadow for cleaner look */
+            white-space: nowrap; /* Ensure text stays on one line */
+        }
+
+        .reset-audio-button:hover {
+            background: linear-gradient(135deg, #ef9a9a 0%, #e57373 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+
+
+        /* --- Animation for spinning in --- */
+        @keyframes spinIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotate(-180deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        /* Initial state for all buttons that will animate */
+        .overlay-screen button,
+        .answer-button,
+        .control-button,
+        .reset-audio-button { /* Added reset-audio-button */
+            opacity: 0;
+            transform: scale(0.5) rotate(-180deg);
+            /* Important: Do not add transition here, animation will handle it */
+        }
+
+        .animated-button {
+            animation: spinIn 0.7s ease-out forwards; /* forwards keeps the end state */
+        }
+
+        /* New shake animations */
+        @keyframes shake-top-left {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-8px, -8px); } /* Shake up-left */
+            50% { transform: translate(0, 0); }
+            75% { transform: translate(-4px, -4px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes shake-top-right {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(8px, -8px); } /* Shake up-right */
+            50% { transform: translate(0, 0); }
+            75% { transform: translate(4px, -4px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes shake-bottom-left {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-8px, 8px); } /* Shake down-left */
+            50% { transform: translate(0, 0); }
+            75% { transform: translate(-4px, 4px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes shake-bottom-right {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(8px, 8px); } /* Shake down-right */
+            50% { transform: translate(0, 0); }
+            75% { transform: translate(4px, 4px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* Apply animation classes to game-container */
+        .game-container.shake-top-left-active {
+            animation: shake-top-left 0.5s ease-out; /* Adjust duration as needed */
+        }
+        .game-container.shake-top-right-active {
+            animation: shake-top-right 0.5s ease-out;
+        }
+        .game-container.shake-bottom-left-active {
+            animation: shake-bottom-left 0.5s ease-out;
+        }
+        .game-container.shake-bottom-right-active {
+            animation: shake-bottom-right 0.5s ease-out;
+        }
+
+        /* Styles for disabled/faded sliders */
+        .slider-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Màn hình chọn chế độ -->
+        <div id="modeSelectionScreen" class="overlay-screen">
+            <h2>Trò chơi toán học</h2>
+            <button id="normalModeBtn" class="overlay-button">Chế độ Normal</button>
+            <button id="zenModeBtn" class="overlay-button">Chế độ Zen</button>
+            <button id="optionsBtn" class="overlay-button">Tùy chọn</button>
+        </div>
+
+        <!-- Màn hình Tùy chọn -->
+        <div id="optionsScreen" class="overlay-screen hidden">
+            <h2>Tùy chọn âm thanh</h2>
+            <div class="grid grid-cols-2 gap-6 w-full max-w-xs">
+                <!-- Music Toggle -->
+                <button id="musicToggleBtn" class="control-button flex items-center justify-center gap-2 col-span-1">
+                    <i class="fas fa-music"></i> Nhạc nền: BẬT
+                </button>
+                <!-- SFX Toggle -->
+                <button id="sfxToggleBtn" class="control-button flex items-center justify-center gap-2 col-span-1">
+                    <i class="fas fa-volume-up"></i> Âm thanh: BẬT
+                </button>
+                <!-- Background Music Volume Slider -->
+                <div class="col-span-2 flex flex-col items-center">
+                    <label for="bgMusicVolumeSlider" class="text-gray-700 text-lg font-bold mb-2">Âm lượng nhạc nền</label>
+                    <input type="range" id="bgMusicVolumeSlider" min="0" max="1" step="0.01" value="0.2" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <!-- Sound Effects Volume Slider -->
+                <div class="col-span-2 flex flex-col items-center">
+                    <label for="sfxVolumeSlider" class="text-gray-700 text-lg font-bold mb-2">Âm lượng hiệu ứng</label>
+                    <input type="range" id="sfxVolumeSlider" min="0" max="1" step="0.01" value="1" class="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <button id="resetAudioBtn" class="reset-audio-button">Đặt lại cài đặt âm thanh</button>
+            <button id="backFromOptionsBtn" class="overlay-button mt-4">⌂ Về màn hình chính</button>
+        </div>
+
+        <!-- Màn hình Game Over -->
+        <div id="gameOverScreen" class="overlay-screen hidden">
+            <h2>Game Over!</h2>
+            <p>Điểm của bạn: <span id="finalScore">0</span></p>
+            <button id="playAgainBtn" class="overlay-button">Chơi Lại</button>
+        </div>
+
+        <!-- Màn hình tạm dừng -->
+        <div id="pauseScreen" class="overlay-screen hidden">
+            <h2>Trò chơi tạm dừng</h2>
+            <button id="resumeGameBtn" class="overlay-button">▶ Tiếp tục</button>
+            <button id="backToMainBtn" class="overlay-button">⌂ Về màn hình chính</button>
+        </div>
+
+        <!-- Phần tử UI của trò chơi (sẽ được hiển thị khi chơi) -->
+        <div id="gameUISetion" class="game-ui-section">
+            <div class="header">
+                <button id="pauseBtn" class="control-button">|| Tạm dừng</button>
+                <div class="score">Điểm: <span id="scoreDisplay">0</span></div>
+            </div>
+
+            <div id="timerContainer" class="timer-bar-container">
+                <div id="timerBar" class="timer-bar"></div>
+            </div>
+
+            <div id="expressionDisplay" class="expression-display">
+                <!-- Biểu thức sẽ được chèn vào đây bởi JavaScript -->
+            </div>
+
+            <div id="answerButtons" class="answer-buttons">
+                <button class="answer-button" data-value="0"></button>
+                <button class="answer-button" data-value="0"></button>
+                <button class="answer-button" data-value="0"></button>
+                <button class="answer-button" data-value="0"></button>
+            </div>
+
+            <!-- Sound toggle button re-added to game UI -->
+            <button id="soundToggleBtn" class="control-button mt-4"><i class="fas fa-music"></i> Nhạc nền: BẬT</button>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // --- DOM Elements ---
+            const modeSelectionScreen = document.getElementById('modeSelectionScreen');
+            const optionsScreen = document.getElementById('optionsScreen'); // New Options screen
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const pauseScreen = document.getElementById('pauseScreen');
+            const gameUISetion = document.getElementById('gameUISetion'); // Container for all game UI elements
+
+            const normalModeBtn = document.getElementById('normalModeBtn');
+            const zenModeBtn = document.getElementById('zenModeBtn');
+            const optionsBtn = document.getElementById('optionsBtn'); // New Options button
+            const playAgainBtn = document.getElementById('playAgainBtn');
+            const resumeGameBtn = document.getElementById('resumeGameBtn');
+            const backToMainBtn = document.getElementById('backToMainBtn');
+            const backFromOptionsBtn = document.getElementById('backFromOptionsBtn'); // New Back from Options button
+            const resetAudioBtn = document.getElementById('resetAudioBtn'); // New Reset Audio button
+
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            const timerContainer = document.getElementById('timerContainer');
+            const timerBar = document.getElementById('timerBar');
+            const expressionDisplay = document.getElementById('expressionDisplay');
+            const answerButtons = document.querySelectorAll('.answer-button');
+            const pauseBtn = document.getElementById('pauseBtn');
+
+            // New Audio Control Elements
+            const musicToggleBtn = document.getElementById('musicToggleBtn');
+            const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+            const bgMusicVolumeSlider = document.getElementById('bgMusicVolumeSlider');
+            const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
+            const soundToggleBtn = document.getElementById('soundToggleBtn'); // Re-added to game UI
+
+
+            // --- Game State Variables ---
+            let currentScore = 0;
+            let gameMode = ''; // 'normal' or 'zen'
+            let isPaused = false;
+            let timerInterval;
+            let timeLeft = 100; // Time left for the timer bar (percentage)
+            const TIME_PER_QUESTION_NORMAL = 10; // Time for each question in Normal mode (seconds)
+            const PENALTY_TIME_PERCENT = 20; // Percentage of time deducted for a wrong answer
+
+            const MAX_VALUE_FOR_MATH = 10; // Max value for operands and results (range 0-10)
+
+            let correctAnswer; // Can be a number or an operator string
+
+            // Stores details of the previously generated question to avoid repetition
+            let previousQuestionDetails = null; // { type: 'number'|'operator', val1, val2, op, res, ans }
+            let lastTwoCorrectAnswers = []; // Stores the correct answers of the last two questions
+
+            // --- Audio State Variables (Persisted) ---
+            // Default audio settings
+            const DEFAULT_BG_MUSIC_ON = true;
+            const DEFAULT_SFX_ON = true;
+            const DEFAULT_BG_MUSIC_VOLUME = 0.2;
+            const DEFAULT_SFX_VOLUME = 1;
+
+            // Initialize from local storage or default values
+            let isBackgroundMusicOn = localStorage.getItem('isBackgroundMusicOn') === 'false' ? false : DEFAULT_BG_MUSIC_ON;
+            let isSoundEffectsOn = localStorage.getItem('isSoundEffectsOn') === 'false' ? false : DEFAULT_SFX_ON;
+            let bgMusicVolumeValue = parseFloat(localStorage.getItem('bgMusicVolumeValue')) || DEFAULT_BG_MUSIC_VOLUME;
+            let sfxVolumeValue = parseFloat(localStorage.getItem('sfxVolumeValue')) || DEFAULT_SFX_VOLUME;
+
+            // --- Audio Objects (HTML Audio for background music) ---
+            const backgroundMusic = new Audio('https://raw.githubusercontent.com/kvbtvn/audio-files/main/Audiofile.mp3');
+            backgroundMusic.loop = true;
+            backgroundMusic.volume = isBackgroundMusicOn ? bgMusicVolumeValue : 0; // Set initial volume based on state
+
+            // Khai báo Tone.Synth là null ban đầu
+            let correctSynth = null;
+            let wrongSynth = null;
+            let modeSelectSynth = null; 
+            let gameOverSynth = null;   
+            let pauseSynth = null;      
+            let resumeSynth = null;     
+            let backToMainSynth = null; 
+            let playAgainSynth = null;  
+            let toneSynthsInitialized = false; // Flag to track if Tone.js synths are initialized
+
+            /**
+             * Initializes all Tone.js synths. This should be called once after Tone.start().
+             */
+            function initToneJsSynths() {
+                if (toneSynthsInitialized) {
+                    console.log("Tone.js synths already initialized.");
+                    return;
+                }
+                console.log("Initializing Tone.js synths...");
+
+                // Synths that always play (independent of isSoundOn)
+                correctSynth = new Tone.Synth({
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
+                }).toDestination();
+
+                wrongSynth = new Tone.Synth({
+                    oscillator: { type: "sawtooth" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.1 }
+                }).toDestination();
+
+                modeSelectSynth = new Tone.Synth({
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.005, decay: 0.05, sustain: 0.05, release: 0.05 }
+                }).toDestination();
+
+                gameOverSynth = new Tone.Synth({
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 0.5 }
+                }).toDestination();
+
+                pauseSynth = new Tone.Synth({
+                    oscillator: { type: "square" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.1 }
+                }).toDestination();
+
+                resumeSynth = new Tone.Synth({ 
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
+                }).toDestination();
+
+                backToMainSynth = new Tone.Synth({ 
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
+                }).toDestination();
+
+                playAgainSynth = new Tone.Synth({ 
+                    oscillator: { type: "triangle" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
+                }).toDestination();
+
+                // Set initial master volume for Tone.js sound effects
+                Tone.Destination.volume.value = isSoundEffectsOn ? Tone.gainToDb(sfxVolumeValue) : -Infinity;
+
+                toneSynthsInitialized = true;
+                console.log("Tone.js synths initialized successfully.");
+            }
+
+            /**
+             * Plays a sound effect using Tone.js if conditions are met.
+             * @param {string} type The type of sound to play ('correct', 'wrong', 'modeSelect', 'gameOver', 'pause', 'resume', 'backToMain', 'playAgain').
+             */
+            const playSound = async (type) => {
+                // Ensure audio context is running before playing any sound
+                if (Tone.context.state !== 'running') {
+                    console.log(`Attempting to start Tone.context before playing '${type}' sound...`);
+                    await Tone.start().catch(e => console.error(`Error starting audio context for '${type}' sound:`, e));
+                    console.log("Tone.context state after start:", Tone.context.state);
+                    // Re-initialize synths if context was just started and they weren't before
+                    if (!toneSynthsInitialized) {
+                        initToneJsSynths();
+                    }
+                }
+
+                if (Tone.context.state !== 'running' || !toneSynthsInitialized) {
+                    console.log(`Không phát âm thanh '${type}': Tone.context.state=${Tone.context.state}, toneSynthsInitialized=${toneSynthsInitialized}`);
+                    return; 
+                }
+
+                if (isSoundEffectsOn) { // Only play SFX if the global SFX toggle is on
+                    switch (type) {
+                        case 'correct':
+                            console.log("Playing correct sound (C5)");
+                            correctSynth.triggerAttackRelease("C5", "8n");
+                            break;
+                        case 'wrong':
+                            console.log("Playing wrong sound (C3)");
+                            wrongSynth.triggerAttackRelease("C3", "16n");
+                            break;
+                        case 'modeSelect': 
+                            console.log("Playing mode select sound (G5)");
+                            modeSelectSynth.triggerAttackRelease("G5", "32n");
+                            break;
+                        case 'gameOver': 
+                            console.log("Playing game over sound (descending arpeggio)");
+                            const now = Tone.now();
+                            gameOverSynth.triggerAttackRelease("C3", "8n", now);
+                            gameOverSynth.triggerAttackRelease("G2", "8n", now + 0.15); 
+                            gameOverSynth.triggerAttackRelease("C2", "8n", now + 0.3);  
+                            break;
+                        case 'pause': 
+                            console.log("Playing pause sound (F4)");
+                            pauseSynth.triggerAttackRelease("F4", "16n");
+                            break;
+                        case 'resume': 
+                            console.log("Playing resume sound (E5)");
+                            resumeSynth.triggerAttackRelease("E5", "16n");
+                            break;
+                        case 'backToMain': 
+                            console.log("Playing back to main sound (C4)");
+                            backToMainSynth.triggerAttackRelease("C4", "8n");
+                            break;
+                        case 'playAgain': 
+                            console.log("Playing play again sound (D5)");
+                            playAgainSynth.triggerAttackRelease("D5", "16n");
+                            break;
+                        default:
+                            console.warn("Unknown sound type:", type);
+                    }
+                } else {
+                    console.log(`Sound effects are OFF. Not playing '${type}'.`);
+                }
+            };
+
+            // --- Utility Functions ---
+
+            /**
+             * Shuffles an array.
+             * @param {Array} array The array to shuffle.
+             * @returns {Array} The shuffled array.
+             */
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            /**
+             * Generates a random integer within a range.
+             * @param {number} min Minimum value.
+             * @param {number} max Maximum value.
+             * @returns {number} Random integer.
+             */
+            function getRandomInt(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            // --- UI Management Functions ---
+
+            /**
+             * Shows a specific overlay screen and hides others.
+             * @param {HTMLElement} screenToShow The screen element to display. Pass null to hide all overlay screens.
+             */
+            function showOverlayScreen(screenToShow) {
+                const screens = [modeSelectionScreen, gameOverScreen, pauseScreen, optionsScreen]; // Added optionsScreen
+                screens.forEach(screen => {
+                    if (screen === screenToShow) {
+                        screen.classList.remove('hidden');
+                        screen.querySelectorAll('button').forEach(btn => btn.classList.add('animated-button'));
+                    } else {
+                        screen.classList.add('hidden');
+                        screen.querySelectorAll('button').forEach(btn => btn.classList.remove('animated-button'));
+                    }
+                });
+            }
+
+            /**
+             * Shows or hides the main game UI elements.
+             * @param {boolean} show True to show, False to hide.
+             */
+            function toggleGameUIElements(show) {
+                if (show) {
+                    gameUISetion.style.display = 'flex'; // Show game UI container
+                    gameUISetion.querySelectorAll('button').forEach(btn => btn.classList.add('animated-button'));
+                } else {
+                    gameUISetion.style.display = 'none'; // Hide game UI container
+                    gameUISetion.querySelectorAll('button').forEach(btn => btn.classList.remove('animated-button'));
+                }
+            }
+
+            // --- Audio Control UI Functions ---
+            function updateMusicUI() {
+                if (isBackgroundMusicOn) {
+                    musicToggleBtn.innerHTML = '<i class="fas fa-music"></i> Nhạc nền: BẬT';
+                    if (soundToggleBtn) { // Update game UI button as well
+                        soundToggleBtn.innerHTML = '<i class="fas fa-music"></i> Nhạc nền: BẬT';
+                    }
+                    bgMusicVolumeSlider.classList.remove('slider-disabled');
+                    bgMusicVolumeSlider.disabled = false;
+                    backgroundMusic.volume = bgMusicVolumeValue; // Set actual audio volume
+                    // Music only plays in game modes OR options screen, not on main/game over screen
+                    if (!isPaused && (gameMode === 'normal' || gameMode === 'zen' || optionsScreen.classList.contains('active-screen')) && Tone.context.state === 'running') {
+                        backgroundMusic.play().catch(e => console.error("Error playing background music:", e));
+                    }
+                } else {
+                    musicToggleBtn.innerHTML = '<i class="fas fa-music fa-slash"></i> Nhạc nền: TẮT';
+                    if (soundToggleBtn) { // Update game UI button as well
+                        soundToggleBtn.innerHTML = '<i class="fas fa-music fa-slash"></i> Nhạc nền: TẮT';
+                    }
+                    bgMusicVolumeSlider.classList.add('slider-disabled');
+                    bgMusicVolumeSlider.disabled = true;
+                    backgroundMusic.pause(); // Pause the audio
+                    backgroundMusic.volume = 0; // Ensure actual volume is 0
+                }
+                // Always set slider value to reflect bgMusicVolumeValue, even if it's 0 when toggled off.
+                // This is crucial for the slider to show the correct position when re-enabled.
+                bgMusicVolumeSlider.value = bgMusicVolumeValue; 
+                localStorage.setItem('isBackgroundMusicOn', isBackgroundMusicOn);
+                localStorage.setItem('bgMusicVolumeValue', bgMusicVolumeValue);
+            }
+
+            function updateSfxUI() {
+                // Update SFX toggle button in options screen
+                if (isSoundEffectsOn) {
+                    sfxToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i> Âm thanh: BẬT';
+                    sfxVolumeSlider.classList.remove('slider-disabled');
+                    sfxVolumeSlider.disabled = false;
+                    if (toneSynthsInitialized) {
+                        Tone.Destination.volume.value = Tone.gainToDb(sfxVolumeValue);
+                    }
+                } else {
+                    sfxToggleBtn.innerHTML = '<i class="fas fa-volume-up fa-slash"></i> Âm thanh: TẮT';
+                    sfxVolumeSlider.classList.add('slider-disabled');
+                    sfxVolumeSlider.disabled = true;
+                    if (toneSynthsInitialized) {
+                        Tone.Destination.volume.value = -Infinity;
+                    }
+                }
+                localStorage.setItem('isSoundEffectsOn', isSoundEffectsOn);
+                localStorage.setItem('sfxVolumeValue', sfxVolumeValue);
+            }
+
+            function toggleBackgroundMusic() {
+                isBackgroundMusicOn = !isBackgroundMusicOn;
+                // If turning ON:
+                // If the stored volume was 0 (meaning it was muted by toggle/slider), restore to default or a small value.
+                // Otherwise, use the last set bgMusicVolumeValue.
+                if (isBackgroundMusicOn && bgMusicVolumeValue === 0) {
+                    bgMusicVolumeValue = DEFAULT_BG_MUSIC_VOLUME; // Restore to a sensible default
+                }
+                updateMusicUI(); // This will handle setting backgroundMusic.volume and UI updates
+            }
+
+            function toggleSoundEffects() { // This function is called by both sfxToggleBtn (options) and soundToggleBtn (game UI)
+                isSoundEffectsOn = !isSoundEffectsOn;
+                if (isSoundEffectsOn && sfxVolumeValue === 0) {
+                    sfxVolumeValue = DEFAULT_SFX_VOLUME; // Restore default if was muted by slider
+                }
+                updateSfxUI();
+            }
+
+            function handleBgMusicVolumeChange() {
+                bgMusicVolumeValue = parseFloat(this.value);
+                // If slider is moved from 0 to >0, turn music on
+                if (bgMusicVolumeValue > 0 && !isBackgroundMusicOn) {
+                    isBackgroundMusicOn = true;
+                } 
+                // If slider is moved to 0, turn music off
+                else if (bgMusicVolumeValue === 0 && isBackgroundMusicOn) {
+                    isBackgroundMusicOn = false;
+                }
+                updateMusicUI();
+            }
+
+            function handleSfxVolumeChange() {
+                sfxVolumeValue = parseFloat(this.value);
+                // If slider is moved from 0 to >0, turn sfx on
+                if (sfxVolumeValue > 0 && !isSoundEffectsOn) {
+                    isSoundEffectsOn = true;
+                }
+                // If slider is moved to 0, turn sfx off
+                else if (sfxVolumeValue === 0 && isSoundEffectsOn) {
+                    isSoundEffectsOn = false;
+                }
+                updateSfxUI();
+            }
+
+            function resetAudioSettings() {
+                isBackgroundMusicOn = DEFAULT_BG_MUSIC_ON;
+                isSoundEffectsOn = DEFAULT_SFX_ON;
+                bgMusicVolumeValue = DEFAULT_BG_MUSIC_VOLUME;
+                sfxVolumeValue = DEFAULT_SFX_VOLUME;
+
+                bgMusicVolumeSlider.value = bgMusicVolumeValue;
+                sfxVolumeSlider.value = sfxVolumeValue;
+
+                updateMusicUI();
+                updateSfxUI();
+                console.log("Audio settings reset to default.");
+            }
+
+
+            // --- Game Logic Functions ---
+
+            /**
+             * Initializes and starts the game in the chosen mode.
+             * @param {string} mode 'normal' or 'zen'.
+             */
+            function startGame(mode) {
+                gameMode = mode;
+                currentScore = 0;
+                scoreDisplay.textContent = currentScore;
+                isPaused = false;
+                previousQuestionDetails = null; // Reset previous question on new game
+                lastTwoCorrectAnswers = []; // Reset previous results on new game
+
+                showOverlayScreen(null); // Hide all overlay screens
+                toggleGameUIElements(true); // Show game UI elements
+
+                pauseBtn.textContent = '|| Tạm dừng';
+
+                if (gameMode === 'normal') {
+                    timerContainer.style.display = 'block'; // Show timer container
+                    timeLeft = 100;
+                    timerBar.style.width = '100%';
+                    
+                } else { // Zen mode
+                    timerContainer.style.display = 'none'; // Hide timer container
+                    clearInterval(timerInterval);
+                }
+                
+                // Ensure music plays if it's supposed to (only in game modes)
+                if (isBackgroundMusicOn && Tone.context.state === 'running') {
+                    backgroundMusic.play().catch(e => console.error("Error playing background music:", e));
+                }
+
+                generateQuestion();
+            }
+
+            /**
+             * Generates a new math question and updates the UI.
+             */
+            function generateQuestion() {
+                let num1, num2, result, operator, expressionParts = [];
+                let questionTypeChoice; 
+
+                const MAX_VAL = MAX_VALUE_FOR_MATH; // Max value for operands and results (range 0-10)
+                const MIN_VAL_FOR_NON_ZERO_OPERAND = 1; // For general number questions, operands start from 1
+                const MIN_VAL_FOR_OPERATOR_QUESTION_OPERAND = 4; // For regular operator questions, operands >= 4
+
+                let attempts = 0;
+                const MAX_ATTEMPTS = 200; 
+                const HIGH_NUMBER_CHANCE = 0.7; // 70% chance for operands to be >= 4 for number questions
+                const OPERATOR_QUESTION_CHANCE = 0.15; // 15% chance for regular operator question
+                const SPECIAL_ZERO_QUESTION_CHANCE = 0.05; // 5% chance for num ? 0 = 0 (multiplication)
+
+                // Helper to get a biased random number for operands in number questions
+                const getOperandForNumberQuestion = () => {
+                    if (Math.random() < HIGH_NUMBER_CHANCE) {
+                        return getRandomInt(4, MAX_VAL); // Bias towards 4-10
+                    } else {
+                        return getRandomInt(MIN_VAL_FOR_NON_ZERO_OPERAND, MAX_VAL); // Full range 1-10
+                    }
+                };
+                
+                let foundValidQuestion = false;
+                while (attempts < MAX_ATTEMPTS && !foundValidQuestion) {
+                    let currentNum1, currentNum2, currentOperator, currentResult, currentCorrectAnswer;
+                    let isCurrentOperatorQuestion;
+                    let isSpecialZeroQuestion = false;
+
+                    // First, try to generate the special num ? 0 = 0 question
+                    if (Math.random() < SPECIAL_ZERO_QUESTION_CHANCE) {
+                        currentNum1 = getRandomInt(MIN_VAL_FOR_NON_ZERO_OPERAND, MAX_VAL); // num1 can be any valid number (1-10)
+                        currentNum2 = 0;
+                        currentOperator = '×'; // Only multiplication works for num ? 0 = 0
+                        currentResult = currentNum1 * currentNum2; // This will be 0
+                        currentCorrectAnswer = currentOperator;
+                        isCurrentOperatorQuestion = true;
+                        isSpecialZeroQuestion = true;
+                        
+                        // Check similarity before accepting
+                        let isSimilar = false;
+                        if (previousQuestionDetails && 
+                            previousQuestionDetails.type === 'operator' &&
+                            previousQuestionDetails.val1 === currentNum1 &&
+                            previousQuestionDetails.val2 === currentNum2 &&
+                            previousQuestionDetails.res === currentResult &&
+                            previousQuestionDetails.ans === currentCorrectAnswer) {
+                            isSimilar = true;
+                        }
+                        if (lastTwoCorrectAnswers.includes(currentCorrectAnswer)) {
+                            isSimilar = true;
+                        }
+                        // NEW: Check for result proximity for number answers (not applicable for operator answers)
+                        // This special question has an operator as answer, so proximity check is skipped here.
+
+                        if (isSimilar) {
+                            attempts++;
+                            continue; // Similar, try again
+                        }
+                        // If it passes similarity and result check, it's a valid question
+                        num1 = currentNum1;
+                        num2 = currentNum2;
+                        operator = currentOperator;
+                        result = currentResult;
+                        correctAnswer = currentCorrectAnswer;
+                        expressionParts = [`${num1}`, `<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`, `${num2}`, `<span class="equals">=</span>`, `${result}`];
+                        foundValidQuestion = true;
+                        // Update history
+                        previousQuestionDetails = {
+                            type: 'operator', val1: num1, val2: num2, op: null, res: result, ans: correctAnswer
+                        };
+                        lastTwoCorrectAnswers.push(correctAnswer);
+                        if (lastTwoCorrectAnswers.length > 2) {
+                            lastTwoCorrectAnswers.shift();
+                        }
+                        break; // Found a special question, exit loop
+                    }
+
+                    // If not a special zero question, proceed with regular question generation
+                    if (Math.random() < OPERATOR_QUESTION_CHANCE) {
+                        // Try to generate a regular operator question (15% chance, excluding the special zero case)
+                        // For regular operator questions, num1 and num2 must be >= 4 and different
+                        currentNum1 = getRandomInt(MIN_VAL_FOR_OPERATOR_QUESTION_OPERAND, MAX_VAL);
+                        do {
+                            currentNum2 = getRandomInt(MIN_VAL_FOR_OPERATOR_QUESTION_OPERAND, MAX_VAL);
+                        } while (currentNum2 === currentNum1); 
+
+                        let possibleOperators = [];
+
+                        // Check for '+'
+                        if (currentNum1 + currentNum2 >= 0 && currentNum1 + currentNum2 <= MAX_VAL) { // Result can be 0 now
+                            possibleOperators.push('+');
+                        }
+                        // Check for '-'
+                        if (currentNum1 - currentNum2 >= 0 && currentNum1 - currentNum2 <= MAX_VAL) { // Result can be 0 now
+                            possibleOperators.push('-');
+                        }
+                        // Check for '×'
+                        if (currentNum1 * currentNum2 >= 0 && currentNum1 * currentNum2 <= MAX_VAL) { // Result can be 0 now
+                            possibleOperators.push('×');
+                        }
+                        // Check for '÷'
+                        // Ensure num2 is not 0 for division, and num1 is divisible by num2, result >= 0
+                        if (currentNum2 !== 0 && currentNum1 % currentNum2 === 0 && (currentNum1 / currentNum2) >= 0 && (currentNum1 / currentNum2) <= MAX_VAL) {
+                            possibleOperators.push('÷');
+                        }
+
+                        if (possibleOperators.length > 0) {
+                            // Weighted operator selection: prioritize '×' and '÷'
+                            let weightedOperators = [];
+                            const highPriorityOps = ['×', '÷'];
+                            const lowPriorityOps = ['+', '-'];
+
+                            possibleOperators.forEach(op => {
+                                if (highPriorityOps.includes(op)) {
+                                    weightedOperators.push(op, op, op); // Add 3 times for higher chance
+                                } else if (lowPriorityOps.includes(op)) {
+                                    weightedOperators.push(op); // Add 1 time
+                                }
+                            });
+
+                            if (weightedOperators.length === 0) { // Should not happen if possibleOperators is not empty
+                                currentOperator = weightedOperators[getRandomInt(0, weightedOperators.length - 1)];
+                            } else {
+                                currentOperator = weightedOperators[getRandomInt(0, weightedOperators.length - 1)];
+                            }
+                            
+                            let calculatedResult;
+                            if (currentOperator === '+') calculatedResult = currentNum1 + currentNum2;
+                            else if (currentOperator === '-') calculatedResult = currentNum1 - currentNum2;
+                            else if (currentOperator === '×') calculatedResult = currentNum1 * currentNum2;
+                            else if (currentOperator === '÷') calculatedResult = currentNum1 / currentNum2;
+
+                            currentResult = calculatedResult; 
+                            currentCorrectAnswer = currentOperator; 
+                            isCurrentOperatorQuestion = true;
+                        } else {
+                            attempts++;
+                            continue; 
+                        }
+                    } else {
+                        // Existing number question generation logic (80% chance if not operator or special zero)
+                        currentOperator = ['+', '-', '×', '÷'][getRandomInt(0, 3)];
+
+                        if (currentOperator === '+') {
+                            currentNum1 = getOperandForNumberQuestion();
+                            currentNum2 = getOperandForNumberQuestion();
+                            currentResult = currentNum1 + currentNum2;
+                        } else if (currentOperator === '-') {
+                            currentNum1 = getOperandForNumberQuestion();
+                            currentNum2 = getOperandForNumberQuestion();
+                            if (currentNum1 < currentNum2) { 
+                                [currentNum1, currentNum2] = [currentNum2, currentNum1]; 
+                            }
+                            currentResult = currentNum1 - currentNum2;
+                        } else if (currentOperator === '×') {
+                            currentNum1 = getOperandForNumberQuestion();
+                            currentNum2 = getOperandForNumberQuestion();
+                            currentResult = currentNum1 * currentNum2;
+                        } else if (currentOperator === '÷') {
+                            // Ensure num2 is not 0 and num1 is divisible by num2
+                            currentNum2 = getRandomInt(1, MAX_VAL); // num2 cannot be 0
+                            currentResult = getRandomInt(1, MAX_VAL); // result cannot be 0
+                            currentNum1 = currentNum2 * currentResult;
+                            if (currentNum1 > MAX_VAL) {
+                                attempts++;
+                                continue;
+                            }
+                        }
+
+                        if (currentResult >= 0 && currentResult <= MAX_VAL && // Result can be 0 now
+                            currentNum1 >= 0 && currentNum1 <= MAX_VAL && // Operands can be 0 now (for number questions)
+                            currentNum2 >= 0 && currentNum2 <= MAX_VAL) {
+                            questionTypeChoice = getRandomInt(1, 6);
+                            switch (questionTypeChoice) {
+                                case 1: 
+                                    currentCorrectAnswer = currentResult;
+                                    break;
+                                case 2: 
+                                    if (currentOperator === '+') currentCorrectAnswer = currentResult - currentNum2;
+                                    else if (currentOperator === '-') currentCorrectAnswer = result + currentNum2;
+                                    else if (currentOperator === '×') {
+                                        if (currentNum2 === 0) { attempts++; continue; } // Prevent division by zero if num2 is 0
+                                        currentCorrectAnswer = currentResult / currentNum2;
+                                    }
+                                    else if (currentOperator === '÷') {
+                                        if (currentNum2 === 0) { attempts++; continue; } // Prevent division by zero if num2 is 0
+                                        currentCorrectAnswer = currentResult * currentNum2;
+                                    }
+                                    break;
+                                case 3: 
+                                    if (currentOperator === '+') currentCorrectAnswer = currentResult - currentNum1;
+                                    else if (currentOperator === '-') currentCorrectAnswer = num1 - result;
+                                    else if (currentOperator === '×') {
+                                        if (currentNum1 === 0) { attempts++; continue; } // Prevent division by zero if num1 is 0
+                                        currentCorrectAnswer = currentResult / currentNum1;
+                                    }
+                                    else if (currentOperator === '÷') {
+                                        if (currentNum1 === 0) { attempts++; continue; } // Prevent division by zero if num1 is 0
+                                        currentCorrectAnswer = num1 / result;
+                                    }
+                                    break;
+                                case 4: 
+                                    currentCorrectAnswer = currentResult;
+                                    break;
+                                case 5: 
+                                    if (currentOperator === '+') currentCorrectAnswer = currentResult - currentNum2;
+                                    else if (currentOperator === '-') currentCorrectAnswer = result + num2;
+                                    else if (currentOperator === '×') {
+                                        if (currentNum2 === 0) { attempts++; continue; } // Prevent division by zero if num2 is 0
+                                        currentCorrectAnswer = currentResult / currentNum2;
+                                    }
+                                    else if (currentOperator === '÷') {
+                                        if (currentNum2 === 0) { attempts++; continue; } // Prevent division by zero if num2 is 0
+                                        currentCorrectAnswer = currentResult * currentNum2;
+                                    }
+                                    break;
+                                case 6: 
+                                    if (currentOperator === '+') currentCorrectAnswer = currentResult - currentNum1;
+                                    else if (currentOperator === '-') currentCorrectAnswer = num1 - result;
+                                    else if (currentOperator === '×') {
+                                        if (currentNum1 === 0) { attempts++; continue; } // Prevent division by zero if num1 is 0
+                                        currentCorrectAnswer = currentResult / currentNum1;
+                                    }
+                                    else if (currentOperator === '÷') {
+                                        if (currentNum1 === 0) { attempts++; continue; } // Prevent division by zero if num1 is 0
+                                        currentCorrectAnswer = num1 / result;
+                                    }
+                                    break;
+                            }
+                            if (!Number.isInteger(currentCorrectAnswer) || currentCorrectAnswer < 0 || currentCorrectAnswer > MAX_VAL) { // Answer can be 0
+                                attempts++;
+                                continue; 
+                            }
+                            isCurrentOperatorQuestion = false;
+                        } else {
+                            attempts++;
+                            continue;
+                        }
+                    }
+
+                    // --- Similarity Check (based on question structure) ---
+                    let isSimilar = false;
+                    if (previousQuestionDetails) {
+                        if (isCurrentOperatorQuestion === previousQuestionDetails.type === 'operator') { // Both same question type (number or operator)
+                            if (isCurrentOperatorQuestion) { // Both are operator questions
+                                if (currentNum1 === previousQuestionDetails.val1 &&
+                                    currentNum2 === previousQuestionDetails.val2 &&
+                                    currentResult === previousQuestionDetails.res) {
+                                    isSimilar = true;
+                                }
+                            } else { // Both are number questions
+                                if ((currentNum1 === previousQuestionDetails.val1 && currentNum2 === previousQuestionDetails.val2 && currentOperator === previousQuestionDetails.op) ||
+                                    (currentCorrectAnswer === previousQuestionDetails.ans && currentOperator === previousQuestionDetails.op)) {
+                                    isSimilar = true;
+                                }
+                            }
+                        }
+                    }
+
+                    // --- Result Duplication Check ---
+                    // Check if the current correct answer is in the last two correct answers
+                    if (lastTwoCorrectAnswers.includes(currentCorrectAnswer)) {
+                        isSimilar = true; // Treat as similar if result is duplicated
+                    }
+
+                    // --- Result Proximity Check ---
+                    // Only apply if the current and previous answers are numbers
+                    if (previousQuestionDetails && 
+                        typeof currentCorrectAnswer === 'number' && 
+                        typeof previousQuestionDetails.ans === 'number') {
+                        if (Math.abs(currentCorrectAnswer - previousQuestionDetails.ans) <= 1) {
+                            isSimilar = true;
+                        }
+                    }
+
+                    if (isSimilar) {
+                        attempts++;
+                        continue; // If similar (either by structure, result, or proximity), try again
+                    }
+
+                    // If not similar, assign to global variables and break loop
+                    num1 = currentNum1;
+                    num2 = currentNum2;
+                    operator = currentOperator;
+                    result = currentResult;
+                    correctAnswer = currentCorrectAnswer;
+                    
+                    foundValidQuestion = true;
+
+                    // Build expressionParts based on the type of question found
+                    if (isCurrentOperatorQuestion) {
+                        expressionParts = [`${num1}`, `<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`, `${num2}`, `<span class="equals">=</span>`, `${result}`];
+                    } else {
+                        switch (questionTypeChoice) {
+                            case 1: expressionParts = [`${num1}`, `<span class="operator">${operator}</span>`, `${num2}`, `<span class="equals">=</span>`, `<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`]; break;
+                            case 2: expressionParts = [`<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`, `<span class="operator">${operator}</span>`, `${num2}`, `<span class="equals">=</span>`, `${result}`]; break;
+                            case 3: expressionParts = [`${num1}`, `<span class="operator">${operator}</span>`, `<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`, `<span class="equals">=</span>`, `${result}`]; break;
+                            case 4: expressionParts = [`<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`, `<span class="equals">=</span>`, `${num1}`, `<span class="operator">${operator}</span>`, `${num2}`]; break;
+                            case 5: expressionParts = [`x`, `<span class="operator">${operator}</span>`, `${num2}`, `<span class="equals">=</span>`, `${result}`]; break;
+                            case 6: expressionParts = [`${num1}`, `<span class="operator">${operator}</span>`, `<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`, `<span class="equals">=</span>`, `${result}`]; break;
+                        }
+                    }
+                    
+                    // Store current question details for the next iteration
+                    previousQuestionDetails = {
+                        type: isCurrentOperatorQuestion ? 'operator' : 'number',
+                        val1: num1,
+                        val2: num2,
+                        op: isCurrentOperatorQuestion ? null : operator, 
+                        res: result,  
+                        ans: correctAnswer
+                    };
+
+                    // Update lastTwoCorrectAnswers
+                    lastTwoCorrectAnswers.push(correctAnswer);
+                    if (lastTwoCorrectAnswers.length > 2) {
+                        lastTwoCorrectAnswers.shift(); 
+                    }
+                }
+
+                if (!foundValidQuestion) {
+                    console.warn("Could not generate a complex/dissimilar question after many attempts, falling back to a simple number question.");
+                    num1 = 5; num2 = 5; operator = '+'; result = 10; correctAnswer = 10;
+                    expressionParts = [`${num1}`, `<span class="operator">${operator}</span>`, `${num2}`, `<span class="equals">=</span>`, `<span class="question-mark-container">? <span class="question-mark-arrow">↓</span></span>`];
+                    previousQuestionDetails = {
+                        type: 'number', val1: num1, val2: num2, op: operator, res: result, ans: correctAnswer
+                    };
+                    lastTwoCorrectAnswers.push(correctAnswer);
+                    if (lastTwoCorrectAnswers.length > 2) {
+                        lastTwoCorrectAnswers.shift();
+                    }
+                }
+
+                expressionDisplay.innerHTML = expressionParts.map(part => `<span class="expression-part">${part}</span>`).join('');
+
+                let answers = new Set();
+                answers.add(correctAnswer); 
+
+                const allOperators = ['+', '-', '×', '÷'];
+                // Numbers for answers can now include 0
+                const allNumbers = Array.from({length: MAX_VAL + 1}, (_, i) => i); // [0, 1, ..., MAX_VAL]
+
+                while (answers.size < 4) {
+                    let wrongOption;
+                    if (typeof correctAnswer === 'number') {
+                        // Generate wrong number, can be 0
+                        if (Math.random() < 0.5) { // 50% chance for wrong answer to be >=4
+                            wrongOption = getRandomInt(4, MAX_VAL);
+                        } else {
+                            wrongOption = getRandomInt(0, MAX_VAL); // Can be 0
+                        }
+                    } else { // correctAnswer is an operator
+                        // Generate wrong operator
+                        const availableOperators = allOperators.filter(op => op !== correctAnswer);
+                        wrongOption = availableOperators[getRandomInt(0, availableOperators.length - 1)];
+                    }
+
+                    if (wrongOption !== correctAnswer && !answers.has(wrongOption)) {
+                        answers.add(wrongOption);
+                    }
+                }
+                let shuffledAnswers = shuffleArray(Array.from(answers));
+
+                answerButtons.forEach((button, index) => {
+                    button.textContent = shuffledAnswers[index];
+                    button.dataset.value = shuffledAnswers[index]; 
+                    button.disabled = false;
+                    button.classList.remove('bg-red-500', 'bg-green-500');
+                    // Set to the original blue gradient
+                    button.style.background = 'linear-gradient(135deg, #82b1ff 0%, #42a5f5 100%)'; 
+                });
+
+                if (gameMode === 'normal') {
+                    timeLeft = 100;
+                    timerBar.style.width = '100%';
+                    startTimer();
+                }
+            }
+
+            /**
+             * Starts the timer for Normal mode.
+             */
+            function startTimer() {
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (!isPaused) {
+                        timeLeft -= (100 / (TIME_PER_QUESTION_NORMAL * 10));
+                        timeLeft = Math.max(0, parseFloat(timeLeft.toFixed(2))); // Round to 2 decimal places and ensure not negative
+                        timerBar.style.width = `${timeLeft}%`;
+                        console.log('Time Left:', timeLeft.toFixed(2)); // Log time left
+                        if (timeLeft <= 0) {
+                            clearInterval(timerInterval);
+                            console.log('Time ran out! Calling gameOver()...'); // Log before calling gameOver
+                            gameOver();
+                        }
+                    }
+                }, 100);
+            }
+
+            /**
+             * Handles user's answer click.
+             * @param {Event} event The click event.
+             */
+            function handleAnswerClick(event) {
+                if (isPaused) return;
+
+                const selectedValue = event.target.dataset.value; // Get as string
+                let isCorrect;
+
+                if (typeof correctAnswer === 'number') {
+                    isCorrect = parseInt(selectedValue) === correctAnswer;
+                } else { // correctAnswer is an operator string
+                    isCorrect = selectedValue === correctAnswer;
+                }
+
+                if (isCorrect) {
+                    playSound('correct'); // Use Tone.js for correct sound (always plays)
+                    currentScore++;
+                    scoreDisplay.textContent = currentScore;
+                    generateQuestion();
+                } else {
+                    playSound('wrong'); // Use Tone.js for wrong sound (always plays)
+                    event.target.disabled = true; // This will apply the grey color from .answer-button:disabled
+                    // No need to add/remove specific background classes here, as disabled state handles it.
+
+                    // --- New shake effect logic ---
+                    const buttonIndex = Array.from(answerButtons).indexOf(event.target);
+                    const gameContainer = document.querySelector('.game-container');
+                    let shakeClass = '';
+
+                    // Determine shake direction based on button index (assuming 2x2 grid)
+                    // Buttons are indexed 0, 1, 2, 3 (top-left, top-right, bottom-left, bottom-right)
+                    if (buttonIndex === 0) { // Top-left
+                        shakeClass = 'shake-top-left-active';
+                    } else if (buttonIndex === 1) { // Top-right
+                        shakeClass = 'shake-top-right-active';
+                    } else if (buttonIndex === 2) { // Bottom-left
+                        shakeClass = 'shake-bottom-left-active';
+                    } else if (buttonIndex === 3) { // Bottom-right
+                        shakeClass = 'shake-bottom-right-active';
+                    }
+
+                    if (shakeClass) {
+                        gameContainer.classList.add(shakeClass);
+                        // Remove the class after the animation duration to reset
+                        setTimeout(() => {
+                            gameContainer.classList.remove(shakeClass);
+                        }, 500); // Match this with the CSS animation duration
+                    }
+                    // --- End new shake effect logic ---
+
+
+                    if (gameMode === 'normal') {
+                        timeLeft = Math.max(0, timeLeft - PENALTY_TIME_PERCENT);
+                        timeLeft = parseFloat(timeLeft.toFixed(2)); // Round to 2 decimal places
+                        timerBar.style.width = `${timeLeft}%`;
+                        if (timeLeft <= 0) {
+                            clearInterval(timerInterval);
+                            gameOver();
+                            return;
+                        }
+                    }
+
+                    setTimeout(() => {
+                        event.target.disabled = false; 
+                        // Revert to the original blue gradient after wrong answer
+                        event.target.style.background = 'linear-gradient(135deg, #82b1ff 0%, #42a5f5 100%)';
+                    }, 1000);
+                }
+            }
+
+            /**
+             * Toggles pause state of the game.
+             */
+            function togglePause() {
+                isPaused = !isPaused;
+                if (isPaused) { // Pausing
+                    playSound('pause'); // Play pause sound BEFORE muting synths (always plays)
+                    clearInterval(timerInterval);
+                    backgroundMusic.pause();
+                    
+                    showOverlayScreen(pauseScreen); // Show pause screen
+                    answerButtons.forEach(button => button.disabled = true); // Disable answer buttons
+
+                    // Ensure pause screen buttons are enabled
+                    resumeGameBtn.disabled = false;
+                    backToMainBtn.disabled = false;
+
+                } else { // Unpausing
+                    if (gameMode === 'normal') {
+                        startTimer();
+                    }
+                    // Music only plays if it's on and in a game mode
+                    if (isBackgroundMusicOn && (gameMode === 'normal' || gameMode === 'zen') && Tone.context.state === 'running') { 
+                        backgroundMusic.play().catch(e => console.error("Error playing background music:", e));
+                    }
+                    showOverlayScreen(null); // Hide pause screen
+                    answerButtons.forEach(button => button.disabled = false); // Enable answer buttons
+                }
+            }
+
+            /**
+             * Resets the game UI to the initial mode selection screen.
+             */
+            function resetGameUI() {
+                showOverlayScreen(modeSelectionScreen); // Show mode selection screen
+                toggleGameUIElements(false); // Hide all game UI elements
+
+                currentScore = 0;
+                scoreDisplay.textContent = currentScore;
+                isPaused = false;
+                clearInterval(timerInterval);
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0; // Đặt lại nhạc nền về đầu khi reset game UI
+                gameMode = ''; // Reset game mode when returning to main screen
+                
+                pauseBtn.textContent = '|| Tạm dừng';
+                answerButtons.forEach(button => button.disabled = false);
+                previousQuestionDetails = null; // Reset previous question details
+                lastTwoCorrectAnswers = []; // Reset previous results
+
+                // Update audio UI to reflect current persisted state
+                updateMusicUI(); 
+                updateSfxUI(); 
+            }
+
+            /**
+             * Handles game over state.
+             */
+            function gameOver() {
+                console.log('gameOver function entered.'); // Log at the start of gameOver
+                playSound('gameOver'); // Play game over sound BEFORE muting synths (always plays)
+                clearInterval(timerInterval);
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0; // Đặt lại nhạc nền về đầu khi game over
+                gameMode = ''; // Reset game mode when game over
+
+                const finalScoreDisplayElement = document.getElementById('finalScore');
+                if (finalScoreDisplayElement) {
+                    finalScoreDisplayElement.textContent = currentScore;
+                } else {
+                    console.error("Error: Could not find 'finalScore' element in gameOver().");
+                }
+
+                showOverlayScreen(gameOverScreen);
+                toggleGameUIElements(false);
+                answerButtons.forEach(button => button.disabled = true);
+            }
+
+            // --- Event Listeners ---
+            normalModeBtn.addEventListener('click', async () => {
+                console.log("Normal mode button clicked. Starting Normal mode.");
+                // Kích hoạt AudioContext khi người dùng click nút
+                if (Tone.context.state !== 'running') {
+                    console.log("Attempting to start Tone.context...");
+                    await Tone.start().catch(e => console.error("Error starting audio context on Normal Mode:", e));
+                    console.log("Tone.context state after start:", Tone.context.state);
+                }
+
+                // Khởi tạo tất cả Tone.js synths sau khi AudioContext chạy
+                initToneJsSynths();
+                playSound('modeSelect'); // Play sound on mode selection (always plays)
+                
+                startGame('normal'); // Bắt đầu game logic
+            });
+
+            zenModeBtn.addEventListener('click', async () => {
+                console.log("Zen mode button clicked. Starting Zen mode.");
+                // Kích hoạt AudioContext khi người dùng click nút
+                if (Tone.context.state !== 'running') {
+                    console.log("Attempting to start Tone.context...");
+                    await Tone.start().catch(e => console.error("Error starting audio context on Zen Mode:", e));
+                    console.log("Tone.context state after start:", Tone.context.state);
+                }
+
+                // Khởi tạo tất cả Tone.js synths sau khi AudioContext chạy
+                initToneJsSynths();
+                playSound('modeSelect'); // Play sound on mode selection (always plays)
+
+                startGame('zen'); // Bắt đầu game logic
+            });
+
+            optionsBtn.addEventListener('click', async () => { // New Options button listener
+                console.log("Options button clicked. Showing options screen.");
+                // Ensure audio context is running for potential music playback in options
+                if (Tone.context.state !== 'running') {
+                    console.log("Attempting to start Tone.context from Options button...");
+                    await Tone.start().catch(e => console.error("Error starting audio context on Options Screen:", e));
+                    initToneJsSynths(); // Initialize synths if not already
+                }
+                // Music plays in options screen if it's enabled
+                if (isBackgroundMusicOn) {
+                    backgroundMusic.play().catch(e => console.error("Error playing background music:", e));
+                }
+                // Add 'active-screen' class to optionsScreen to allow music to play
+                optionsScreen.classList.add('active-screen'); 
+                playSound('modeSelect'); // Play sound for options button click
+                showOverlayScreen(optionsScreen);
+            });
+
+            playAgainBtn.addEventListener('click', async () => { // Make async
+                console.log("Play Again button clicked");
+                await playSound('playAgain'); // Await the sound
+                resetGameUI(); // Go back to mode selection
+            });
+            answerButtons.forEach(button => {
+                button.addEventListener('click', handleAnswerClick);
+            });
+            pauseBtn.addEventListener('click', () => {
+                console.log("Main Pause button clicked");
+                togglePause();
+            });
+            resumeGameBtn.addEventListener('click', async () => { // Make async
+                console.log("Resume Game button clicked from pause screen");
+                await playSound('resume'); // Await the sound
+                togglePause();
+            });
+            backToMainBtn.addEventListener('click', async () => { // Make async
+                console.log("Back to Main button clicked from pause screen");
+                await playSound('backToMain'); // Await the sound
+                resetGameUI(); // Go back to mode selection
+            });
+            backFromOptionsBtn.addEventListener('click', async () => { // Make async
+                console.log("Back from Options button clicked.");
+                await playSound('backToMain'); // Await the sound
+                backgroundMusic.pause(); // Stop music when leaving options screen
+                backgroundMusic.currentTime = 0; // Reset music to start
+                optionsScreen.classList.remove('active-screen'); // Remove active-screen class
+                resetGameUI(); // Go back to mode selection
+            });
+
+            // New Audio Control Event Listeners
+            musicToggleBtn.addEventListener('click', toggleBackgroundMusic);
+            sfxToggleBtn.addEventListener('click', toggleSoundEffects); // This is the SFX toggle in options
+            bgMusicVolumeSlider.addEventListener('input', handleBgMusicVolumeChange);
+            sfxVolumeSlider.addEventListener('input', handleSfxVolumeChange);
+            soundToggleBtn.addEventListener('click', toggleBackgroundMusic); // This is the Music toggle in game UI
+
+            resetAudioBtn.addEventListener('click', resetAudioSettings); // New listener for reset audio button
+
+            // --- Initial Setup on Load ---
+            // Set initial slider positions based on persisted values
+            bgMusicVolumeSlider.value = bgMusicVolumeValue;
+            sfxVolumeSlider.value = sfxVolumeValue;
+            resetGameUI(); // Ensure mode selection screen is shown first and audio states are initialized
+        };
+        // End of window.onload function and script block.
+    </script>
+</body>
+</html>
